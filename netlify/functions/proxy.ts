@@ -19,6 +19,10 @@ const CORS_HEADERS: Record<string, string> = {
   "access-control-allow-headers": "*",
 };
 
+// Groq API Base URL
+const GROQ_API_BASE_URL = "https://api.groq.com/openai";
+
+
 export default async (request: Request, context: Context) => {
 
   if (request.method === "OPTIONS") {
@@ -34,17 +38,17 @@ export default async (request: Request, context: Context) => {
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Google PaLM API proxy on Netlify Edge</title>
+  <title>Groq API proxy on Netlify Edge</title>
 </head>
 <body>
-  <h1 id="google-palm-api-proxy-on-netlify-edge">Google PaLM API proxy on Netlify Edge</h1>
-  <p>Tips: This project uses a reverse proxy to solve problems such as location restrictions in Google APIs. </p>
+  <h1 id="groq-api-proxy-on-netlify-edge">Groq API proxy on Netlify Edge</h1>
+  <p>Tips: This project uses a reverse proxy to solve problems such as location restrictions or enhance access to Groq APIs. </p>
   <p>If you have any of the following requirements, you may need the support of this project.</p>
   <ol>
-  <li>When you see the error message &quot;User location is not supported for the API use&quot; when calling the Google PaLM API</li>
-  <li>You want to customize the Google PaLM API</li>
+  <li>When you want to customize access to Groq API</li>
+  <li>You need a simple way to proxy your requests to Groq API</li>
   </ol>
-  <p>For technical discussions, please visit <a href="https://simonmy.com/posts/使用netlify反向代理google-palm-api.html">https://simonmy.com/posts/使用netlify反向代理google-palm-api.html</a></p>
+  <p>For technical discussions, please visit [Your Blog Link if you have one]</p>
 </body>
 </html>
     `
@@ -56,19 +60,25 @@ export default async (request: Request, context: Context) => {
     });
   }
 
-  const url = new URL(pathname, "https://generativelanguage.googleapis.com");
-  searchParams.delete("_path");
+  const url = new URL(pathname, GROQ_API_BASE_URL);
+  searchParams.delete("_path"); // 移除可能存在的 _path 参数
 
   searchParams.forEach((value, key) => {
-    url.searchParams.append(key, value);
+      url.searchParams.append(key, value);
   });
 
-  const headers = pickHeaders(request.headers, ["content-type", "x-goog-api-client", "x-goog-api-key", "accept-encoding"]);
+    // 调整头部过滤，根据 Groq API 文档设置
+    const headers = pickHeaders(request.headers, [
+    "content-type",
+    "authorization", // 通常 Groq API 需要 Authorization 头部
+    // 添加其他可能需要的头部，如 "X-Custom-Header"
+  ]);
+
 
   const response = await fetch(url, {
     body: request.body,
     method: request.method,
-    duplex: 'half',
+    duplex: 'half', //groq api 需要 duplex: 'half'
     headers,
   });
 
@@ -77,6 +87,7 @@ export default async (request: Request, context: Context) => {
     ...Object.fromEntries(response.headers),
     "content-encoding": null
   };
+
 
   return new Response(response.body, {
     headers: responseHeaders,
